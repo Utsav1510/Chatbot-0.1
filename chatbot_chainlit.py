@@ -24,7 +24,7 @@ conv_model=HuggingFaceHub(huggingfacehub_api_token=os.environ["HUGGINGFACEHUB_AP
                          repo_id=model_id,
                          model_kwargs={"temperature":0.8,"max_new_tokens":200}
                          )
-template=""" My name is chat gpt
+template=""" Explain
 
 {query}"""
 
