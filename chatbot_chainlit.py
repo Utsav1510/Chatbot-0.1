@@ -1,4 +1,4 @@
-import os
+import os, utils
 import chainlit as cl
 # from langchain_community.llms import huggingface_hub as HuggingFaceHub
 from langchain.llms.huggingface_hub import HuggingFaceHub
@@ -31,15 +31,25 @@ template=""" Explain
 @cl.on_chat_start
 def main():
 
-    prompt=PromptTemplate(template=template,input_variables=['query'])
+    cl.user_session.set("conversation_history", [])  # Initialize the conversation history
+    prompt=PromptTemplate(template=template, input_variables=['query'])
     conv_chain=LLMChain(llm=conv_model,prompt=prompt,verbose=True)
+    cl.user_session.set("llm_chain",conv_chain)
 
     cl.user_session.set("llm_chain",conv_chain)
 
 @cl.on_message
 async def main(message:cl.Message):
     llm_chain=cl.user_session.get("llm_chain")
-    res = await llm_chain.acall(message.content,callbacks=[cl.AsyncLangchainCallbackHandler()])
+    conversation_history = cl.user_session.get("conversation_history", [])
+    conversation_history.append((message.content, None))
+    cl.user_session["conversation_history"] = conversation_history
+
+    formatted_history = utils.format_conversation_history(conversation_history)
+    res = await llm_chain.acall({"query": formatted_history + f"Human: {message.content}"}, callbacks=[cl.AsyncLangchainCallbackHandler()])
+
+    conversation_history[-1] = (message.content, res["text"])
+    cl.user_session["conversation_history"] = conversation
     # do postprocessing after receiving response
     # res is dict and all response is stored under text key
     await cl.Message(content=res["text"]).send()
